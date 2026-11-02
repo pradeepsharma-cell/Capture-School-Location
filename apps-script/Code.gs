@@ -27,10 +27,16 @@ function doGet(e) {
       return out_(saveLocation(Number(p.row), p.school, p.lat, p.lng, p.acc), e);
     } catch (err) { return out_({ ok: false, error: String(err.message || err) }, e); }
   }
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('School Location Capture')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  try {
+    return HtmlService.createHtmlOutputFromFile('Index')
+      .setTitle('School Location Capture')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1, viewport-fit=cover')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (err) {
+    // Index file na bani ho to bhi API (GitHub page) chalti rahe
+    return HtmlService.createHtmlOutput('<p style="font-family:sans-serif">School Location API chal raha hai. ' +
+      'Page kholne ke liye GitHub wala link use karein.</p>');
+  }
 }
 
 function getSheet_() {
