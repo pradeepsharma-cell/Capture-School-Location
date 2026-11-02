@@ -134,14 +134,18 @@ function api(action, params, ok, fail){
   }
   if(!WEB_APP_URL){ fail(new Error('Ye page Apps Script ke Web App link se kholein, ya Index.html me WEB_APP_URL set karein.')); return; }
   var q = Object.keys(params||{}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k])}).join('&');
-  fetch(WEB_APP_URL+'?action='+action+(q?'&'+q:''))
-    .then(function(r){return r.json()})
-    .then(function(j){ return {j:j}; }, function(e){ return {err:e}; })
-    .then(function(x){
-      if(x.err) return fail(x.err);
-      if(x.j.ok===false) return fail(new Error(x.j.error));
-      ok(action==='list' ? x.j.data : x.j);
-    });
+  var cbName = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
+  var done = false, tag = document.createElement('script');
+  function cleanup(){ clearTimeout(tm); try{ delete window[cbName]; }catch(_){ window[cbName]=undefined; } if(tag.parentNode) tag.parentNode.removeChild(tag); }
+  var tm = setTimeout(function(){ if(done) return; done=true; cleanup(); fail(new Error('Server se jawab nahi aaya. Internet check karein, ya Apps Script deployment me "Who has access = Anyone" rakhein.')); }, 25000);
+  window[cbName] = function(j){
+    if(done) return; done = true; cleanup();
+    if(!j || j.ok===false) return fail(new Error((j && j.error) || 'Unknown error'));
+    ok(action==='list' ? j.data : j);
+  };
+  tag.onerror = function(){ if(done) return; done=true; cleanup(); fail(new Error('Apps Script link khul nahi raha. Deploy me "Who has access = Anyone" aur latest Code.gs ka New version deploy karein.')); };
+  tag.src = WEB_APP_URL + '?action=' + action + (q ? '&' + q : '') + '&callback=' + cbName;
+  document.head.appendChild(tag);
 }
 
 function init(){

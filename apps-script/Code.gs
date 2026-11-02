@@ -4,21 +4,28 @@
  */
 var SHEET_GID = 1877270736; // aapki sheet ka gid
 
-function json_(o) {
-  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+function out_(o, e) {
+  var cb = e && e.parameter && e.parameter.callback;
+  var txt = JSON.stringify(o);
+  if (cb && /^[A-Za-z_][A-Za-z0-9_]{0,60}$/.test(cb)) {
+    // JSONP: browser CORS ke bina data le sakta hai
+    return ContentService.createTextOutput(cb + '(' + txt + ');')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(txt).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doGet(e) {
   var a = e && e.parameter && e.parameter.action;
   if (a === 'list') {
-    try { return json_({ ok: true, data: getSchools() }); }
-    catch (err) { return json_({ ok: false, error: String(err.message || err) }); }
+    try { return out_({ ok: true, data: getSchools() }, e); }
+    catch (err) { return out_({ ok: false, error: String(err.message || err) }, e); }
   }
   if (a === 'save') {
     try {
       var p = e.parameter;
-      return json_(saveLocation(Number(p.row), p.school, p.lat, p.lng, p.acc));
-    } catch (err) { return json_({ ok: false, error: String(err.message || err) }); }
+      return out_(saveLocation(Number(p.row), p.school, p.lat, p.lng, p.acc), e);
+    } catch (err) { return out_({ ok: false, error: String(err.message || err) }, e); }
   }
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('School Location Capture')
