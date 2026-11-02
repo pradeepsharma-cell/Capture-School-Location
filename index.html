@@ -97,7 +97,7 @@
       <iframe class="map" id="mapPrev" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
       <div class="stack">
         <button class="btn ghost" id="btnRefresh">🔄 Refresh Google Location</button>
-        <button class="btn save" id="btnSave">✅ Sheet में Save करें</button>
+        <button class="btn save" id="btnSave">✅ Submit Location</button>
       </div>
     </div>
 
@@ -136,8 +136,12 @@ function api(action, params, ok, fail){
   var q = Object.keys(params||{}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k])}).join('&');
   fetch(WEB_APP_URL+'?action='+action+(q?'&'+q:''))
     .then(function(r){return r.json()})
-    .then(function(j){ if(j.ok===false) fail(new Error(j.error)); else ok(action==='list'? j.data : j); })
-    .catch(fail);
+    .then(function(j){ return {j:j}; }, function(e){ return {err:e}; })
+    .then(function(x){
+      if(x.err) return fail(x.err);
+      if(x.j.ok===false) return fail(new Error(x.j.error));
+      ok(action==='list' ? x.j.data : x.j);
+    });
 }
 
 function init(){
@@ -253,7 +257,8 @@ $('btnSave').onclick = function(){
     b.disabled=false; b.innerHTML=old;
     cur.l = r.link; stats();
     // refresh dropdown tick marks
-    var p = $('selPO').value; var keep = cur.r; $('selPO').onchange(); $('selSchool').value = keep;
+    var saved = cur, keep = cur.r;
+    $('selPO').onchange(); $('selSchool').value = keep; cur = saved;
     showSchool(); $('capBox').classList.add('hidden');
     msg('✅ लोकेशन शीट में सेव हो गई! अब शीट में लिंक पर क्लिक करके directly Google Map खुलेगा।','okm');
   }, function(e){
