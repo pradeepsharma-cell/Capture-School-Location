@@ -24,7 +24,7 @@ function doGet(e) {
   if (a === 'save') {
     try {
       var p = e.parameter;
-      return out_(saveLocation(Number(p.row), p.school, p.lat, p.lng, p.acc), e);
+      return out_(saveLocation(Number(p.row), p.school, p.lat, p.lng, p.acc, p.link), e);
     } catch (err) { return out_({ ok: false, error: String(err.message || err) }, e); }
   }
   try {
@@ -64,10 +64,21 @@ function getSchools() {
 }
 
 /** Saves the Google Maps link for the given row (verifies school name to avoid wrong-row writes) */
-function saveLocation(row, schoolName, lat, lng, accuracy) {
-  lat = Number(lat); lng = Number(lng);
-  if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-    throw new Error('Invalid location');
+function saveLocation(row, schoolName, lat, lng, accuracy, link) {
+  var finalLink;
+  if (link) {
+    link = String(link).trim();
+    var okHost = /^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|(www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+)(\/|\?)/i;
+    if (!okHost.test(link) || link.length > 500 || /\s/.test(link)) {
+      throw new Error('Sirf Google Maps ka link daalein.');
+    }
+    finalLink = link;
+  } else {
+    lat = Number(lat); lng = Number(lng);
+    if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      throw new Error('Invalid location');
+    }
+    finalLink = 'https://www.google.com/maps?q=' + lat.toFixed(6) + ',' + lng.toFixed(6);
   }
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -77,13 +88,12 @@ function saveLocation(row, schoolName, lat, lng, accuracy) {
     if (current !== String(schoolName).trim()) {
       throw new Error('Sheet change ho gayi hai, page refresh karke dobara try karein.');
     }
-    var link = 'https://www.google.com/maps?q=' + lat.toFixed(6) + ',' + lng.toFixed(6);
     var cell = sh.getRange(row, 4);
-    cell.setValue(link);
+    cell.setValue(finalLink);
     cell.setNote('Captured: ' + Utilities.formatDate(new Date(), 'Asia/Kolkata', 'dd-MMM-yyyy HH:mm') +
       ' | Accuracy: ' + Math.round(accuracy || 0) + ' m');
     SpreadsheetApp.flush();
-    return { ok: true, link: link };
+    return { ok: true, link: finalLink };
   } finally {
     lock.releaseLock();
   }
